@@ -1,0 +1,8 @@
+*.pth
+*.pyc
+.vscode
+__pycache__
+Results/models
+*debug.log
+*internal.log
+wandb/
