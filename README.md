@@ -2,7 +2,7 @@
  * @Author       : ZHP
  * @Date         : 2022-02-15 13:58:30
  * @LastEditors  : ZHP
- * @LastEditTime : 2022-02-15 14:20:01
+ * @LastEditTime : 2022-04-24 12:37:33
  * @FilePath     : /README.md
  * @Description  : 
  * Copyright 2022 ZHP, All Rights Reserved. 
@@ -26,5 +26,5 @@ Progressive Point Cloud Transformer
 cd PPCTNet
 
 
-python train_partseg.py --model_name=PorogressivePintCloudTransformer_Pre --nEpochs=300 --optimizer=SGD --learning_rate=0.06 --batch_size=8 --gpus=0 --lr_step=40 
+python train_partseg.py --model_name=PPLT_Model_Seg --nEpochs=300 --optimizer=SGD --learning_rate=0.06 --batch_size=32
 ```
