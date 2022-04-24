@@ -2,7 +2,7 @@
 Author       : ZHP
 Date         : 2021-05-28 23:05:16
 LastEditors  : ZHP
-LastEditTime : 2022-02-15 13:57:22
+LastEditTime : 2022-04-24 12:32:58
 FilePath     : /train_partseg.py
 Description  : 项目说明
 Copyright    : ZHP
@@ -59,8 +59,13 @@ def main():
     torch.cuda.empty_cache()
     utils.fix_seed(SEED)
     args = get_args()    
-    partseg = shapePart_train.PartSegTrainer(args.__dict__, models.get_loss, \
-    {"enc_num" : args.enc_num, "part_num" : 50, "share" : args.share})
+    model_dict = {
+        "target_num" : 50,
+        "embed_list" : [[128, 256], [256, 512], [512, 1024]],
+        "pos_mode" : "relative",
+        "res" : False
+    }
+    partseg = shapePart_train.PartSegTrainer(args.__dict__, models.get_loss, model_dict)
     try:
         partseg.run()
     except:
@@ -69,4 +74,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # python train_partseg.py --model_name=ProgressivePointCloudTransformer_Pre --nEpochs=300 --optimizer=SGD --learning_rate=0.06 --batch_size=8 --gpus=0 --lr_step=40 
+    # python train_partseg.py --model_name=PPLT_Model_Seg

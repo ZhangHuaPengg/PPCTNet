@@ -2,8 +2,8 @@
 Author       : ZHP
 Date         : 2021-12-08 15:37:26
 LastEditors  : ZHP
-LastEditTime : 2022-01-05 21:30:06
-FilePath     : /TransformerPlus/models/PointNetPlusPlusModel.py
+LastEditTime : 2022-03-21 21:29:55
+FilePath     : /models/pointnet/PointNetPlusPlusModel.py
 Description  : 
 Copyright 2021 ZHP, All Rights Reserved. 
 2021-12-08 15:37:26
@@ -450,8 +450,12 @@ class PointNetPlusPlusSemanticSeg_MSG(nn.Module):
         return pred, points_sa_4
 
 
-def get_loss(pred, target):
-    loss = F.nll_loss(pred, target)
+def get_loss(pred, target, weight=None):
+    if weight is None:
+        loss = F.nll_loss(pred, target)
+    else:
+        # semantic segmentation loss
+        loss = F.nll_loss(pred, target, weight=weight)
     return loss
 
 

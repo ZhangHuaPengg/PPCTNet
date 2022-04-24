@@ -2,8 +2,8 @@
 Author       : ZHP
 Date         : 2021-12-03 16:06:21
 LastEditors  : ZHP
-LastEditTime : 2022-01-14 14:56:31
-FilePath     : /models/transformer_model.py
+LastEditTime : 2022-04-03 19:32:21
+FilePath     : /models/transformer/transformer_model.py
 Description  : transformer model, refer http://nlp.seas.harvard.edu/2018/04/03/attention.html
 Copyright 2021 ZHP, All Rights Reserved. 
 2021-12-03 16:06:21
@@ -32,26 +32,28 @@ class DotAttention(nn.Module):
         super().__init__()
         if dropout_attn is not None:
             self.dropout = nn.Dropout(dropout_attn)
+        else:
+            self.dropout = None
         self.softmax = nn.Softmax(dim=-1)
    
     def forward(self, q, k, v, scale=True, mask=None):
         '''
         Author: ZHP
         description: self-attention implement
-        param {torch.tensor} q : query矩阵，[B, *, N, dim_k]   
-        param {torch.tensor} k : key矩阵，[B, *, N, dim_k]
-        param {torch.tensor} v : value矩阵, [B, *, N, dim_k]
+        param {torch.tensor} q : query矩阵，[B, *, N1, dim_k]   
+        param {torch.tensor} k : key矩阵，[B, *, N2, dim_k]
+        param {torch.tensor} v : value矩阵, [B, *, N2, dim_v]
         param {torch.tensor} scale :scalar,温度因子(temperature)，默认为sqrt(dim_k)
         param {torch.tensor} mask : mask,用于消去对padding位置的attention
         
-        return {torch.tensor} feature : 经过self-attention后的特征， [B, *, N, dim_k]
-        rerutn {torch.tensor} scores : attention map, [B, *, N, N]
+        return {torch.tensor} feature : 经过self-attention后的特征， [B, *, N1, dim_v]
+        rerutn {torch.tensor} scores : attention map, [B, *, N1, N2]
         ''' 
         # 对于视觉常用序列，输入肯定是对齐的(等长),故不用mask
         # scale是防止点积过大，用于缩放
         dim_num = q.shape[-1]
-        assert k.shape == q.shape and v.shape == q.shape, "In Self-Attention, query.shape={0}, key.shape={1}, value.shape={3}".format(q.shape, k.shape, v.shape)
-        scores = torch.matmul(q, k.transpose(-2, -1))
+        assert k.shape[-1] == q.shape[-1] and v.shape[-2] == k.shape[-2], "In Self-Attention, query.shape={0}, key.shape={1}, value.shape={3}".format(q.shape, k.shape, v.shape)
+        scores = torch.matmul(q, k.transpose(-2, -1))   # [B, *, N1, N2]
         
         if scale:
             scores =  scores / math.sqrt(dim_num)   # 通过温度因子(temperature) sqrt(dk) 进行缩放(scale)
@@ -69,7 +71,7 @@ class DotAttention(nn.Module):
             scores = self.dropout(scores)
         
         # 与value(V)点积
-        feature = torch.matmul(scores, v.to(scores.dtype))
+        feature = torch.matmul(scores, v.to(scores.dtype))      # [b, *, N1, dim_v]
         return feature, scores
 
 
@@ -157,8 +159,8 @@ class FeedForwardNet(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(dim_in, dim_hid, bias=False),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(dim_hid, dim_in, bias=False),
-            nn.Dropout(dropout)
         )
 
         # add & norm

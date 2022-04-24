@@ -2,7 +2,7 @@
 Author       : ZHP
 Date         : 2022-01-05 16:17:57
 LastEditors  : ZHP
-LastEditTime : 2022-02-15 14:02:45
+LastEditTime : 2022-04-24 12:32:44
 FilePath     : /trainer/shapePart_train.py
 Description  : 
 Copyright 2022 ZHP, All Rights Reserved. 
@@ -203,7 +203,7 @@ class PartSegTrainer(Trainer):
             point_clouds[:, :, 0:3] = utils.shift_point_cloud(point_clouds[:, :, 0:3])
             point_clouds, part_label = point_clouds.cuda(), part_label.long().cuda()
 
-            predict_part, _ = self.model(point_clouds.permute(0, 2, 1), utils.make_one_hot(object_label.cuda(), 16))
+            predict_part = self.model(point_clouds.permute(0, 2, 1), utils.make_one_hot(object_label.cuda(), 16))
             loss = self.criterion(predict_part.permute(0, 2, 1), part_label)
             loss_train += loss.item()
             self.optimizer.zero_grad()
@@ -237,7 +237,7 @@ class PartSegTrainer(Trainer):
         valid_metrics = {}
         valid_iter = tqdm(enumerate(self.valid_loader), total=len(self.valid_loader), unit="sample", smoothing=0.9)
         for batch_id, (point_clouds, object_label, part_label) in valid_iter:
-            valid_pre, valid_context = self.model(point_clouds.cuda().permute(0, 2, 1), utils.make_one_hot(object_label.cuda(), 16))
+            valid_pre = self.model(point_clouds.cuda().permute(0, 2, 1), utils.make_one_hot(object_label.cuda(), 16))
             valid_pre = valid_pre.permute(0, 2, 1)
             loss_valid += self.criterion(valid_pre, part_label.long().cuda()).item()
             valid_pre = valid_pre.detach().cpu().numpy()

@@ -2,7 +2,6 @@
 Author       : ZHP
 Date         : 2021-11-13 10:57:27
 LastEditors  : ZHP
-LastEditTime : 2022-01-14 21:28:40
 FilePath     : /models/pointnet/pointNet2_Ops.py
 Description  : PointNet++ 中的Ops
 Copyright    : ZHP
@@ -125,7 +124,7 @@ def query_ball_point(radius, nsample, xyz, new_xyz):
     return group_idx
 
 
-def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
+def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False, cat_xyz=True):
     """
     Author: ZHP
     func: 对点云进行sample和group
@@ -137,9 +136,10 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
     param {torch.tensor} xyz ：输入点云数据 [B, N, 3]
     param {torch.tensor} points ：点云旧特征 [B, N, D]，为None表示没有旧特征
     param {bool} returnfps : 是否返回最远点采样数据
+    param {bool} cat_xyz : 特征是否拼接相对坐标，pointnet++默认拼接
     
     return {torch.tensor} new_xyz : 采样后新的点云数据, 即最远点(球心)的数据(坐标) [B, npoint, C]
-    return {torch.tensor} new_points : 新的点云特征 [B, npoint, nsample, C + D](points有时) / [B, npoint, nsample, C]
+    return {torch.tensor} new_points : 新的点云特征 [B, npoint, nsample, C + D/D](points有时) / [B, npoint, nsample, C]
     return {torch.tensor} grouped_xyz : 所有group内的nsample个采样点数据 [B, npoint, nsample, C], returnfps为True时返回
     return {torch.tensor} fps_idx : 最远点采样索引 [B, npoint], returnfps为True时返回
     """
@@ -158,7 +158,10 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
     # 如果输入点云有特征，则与新特征concat返回，否则只返回新特征
     if points is not None:
         grouped_points = index_points(points, idx)                             # 所有group内nsample个采样点的旧特征 [B, npoint, nsample, D]
-        new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)      # 与新特征拼接，[B, npoint, nsample, C+D]
+        if cat_xyz:
+            new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)      # 与新特征拼接，[B, npoint, nsample, C+D]
+        else:
+            new_points = grouped_points                     # [B, npoint, nsample, D]
     else:
         new_points = grouped_xyz_norm
     if returnfps:
@@ -167,7 +170,7 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
         return new_xyz, new_points   # 返回新的点云数据 和 新的点云特征
 
 
-def sample_and_group_all(xyz, points):
+def sample_and_group_all(xyz, points, cat_xyz=True):
     '''
     Author: ZHP
     func: 全局sample 和 group
@@ -176,17 +179,21 @@ def sample_and_group_all(xyz, points):
     param {torch.tensor} points : 点云旧特征 [B, N, D] 
 
     return {torch.tensor} new_xyz : 新的点云数据 [B, 1, C] 全0，表示原点，只有一个group
-    return {torch.tensor} new_points ： 新的点云特征， [B, 1, N, C] / [B, 1, N, C + D]
+    return {torch.tensor} new_points ： 新的点云特征， [B, 1, N, C] / [B, 1, N, C + D] / [B, 1, N, D]
     '''
     device = xyz.device
     B, N, C = xyz.shape
     new_xyz = torch.zeros(B, 1, C).to(device)  # 只有一个group， 球心为原点
     grouped_xyz = xyz.view(B, 1, N, C) # 新的点云特征，即为点云数据 [B, 1, N, C] 1代表1个group， N代表每个group有N个采样点
     if points is not None:
-        new_points = torch.cat([grouped_xyz, points.view(B, 1, N, -1)], dim=-1)  # 拼接旧特征 [B, 1, N, C + D]
+        if cat_xyz:
+            new_points = torch.cat([grouped_xyz, points.view(B, 1, N, -1)], dim=-1)  # 拼接旧特征 [B, 1, N, C + D]
+        else:
+            new_points = points.unsqueeze(1)       #  [B, 1, N, D]
     else:
         new_points = grouped_xyz
     return new_xyz, new_points
+
 
 def get_mlp_layer(in_channel, out_channel, kernel_size, activate=True):
     """
@@ -391,8 +398,8 @@ class PointNetFeaturePropagation(nn.Module):
 
         if points_sa is not None:
             # concatenate 两个level特征
-            points1 = points_sa.permute(0, 2, 1)                              # [B, N, D1]
-            new_points = torch.cat([points1, interpolated_points], dim=-1)  # [B, N, D1+D2]
+            points1 = points_sa.permute(0, 2, 1)                                # [B, N, D1]
+            new_points = torch.cat([points1, interpolated_points], dim=-1)      # [B, N, D1+D2]
         else:
             new_points = interpolated_points                                # [B, N, D2]
 
